@@ -43,7 +43,6 @@
 bi_decl(bi_program_feature("USB keyboard support"));
 #endif
 #include <pico/controls.h>
-#include "hardware/gpio.h"
 
 static const int scancode_translate_table[] = SCANCODE_TO_KEYS_ARRAY;
 
@@ -576,11 +575,6 @@ void I_GetEventTimeout(int key_timeout) {
 #ifdef PICOHERO_CTRL
   uint16_t dpad_state = ctrl_dpad_state();
   uint16_t btn_state = ctrl_button_state();
-
-  if (btn_state)
-    gpio_put(PICO_DEFAULT_LED_PIN, 1);
-  else
-    gpio_put(PICO_DEFAULT_LED_PIN, 0);
 
   if (do_run)
     pico_key_down(SDL_SCANCODE_LSHIFT, 0, 0); // run
