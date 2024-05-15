@@ -4,7 +4,7 @@ This is the adaption of *Graham Sanderson's* great Doom port for the RP2040 whic
 
 ![Doom on the Pico Held](images/img1.jpg)
 
-Build instructions below (in Graham Sanderson's original readme) just be sure to pick "doom_tiny_ILI9341_MCU.uf2" for flashing
+Build instructions below (in Graham Sanderson's original readme) just be sure to pick "doom_tiny_ILI9341_MCU.uf2" for flashing. And you will need a custom version of Pico-Extras containing a modified version of the PWM audio module (since I was unable to make the supplied PWM audio module work within a reasonable amount of time). The Pico-Extras is inculded as a gzipped tar archive in this repo (though it might be enough to just add the modified PWM2 module...).
 
 I built in the *Pico Hero's* parallel MCU LCD driver as well as PWM audio. So far no SD card support (e.g. for save states)
 
