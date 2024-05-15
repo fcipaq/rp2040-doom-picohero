@@ -1,3 +1,23 @@
+# RP2040 Doom - now for the *Pico Held*
+
+This is the adaption of *Graham Sanderson's* great Doom port for the RP2040 which was made working on LCDs by *rsheldiii* and now runs on the *Pico Hero*. Thanks for the amazing work.
+
+![Doom on the Pico Held](images/img1.jpg)
+
+Build instructions below (in Graham Sanderson's original readme) just be sure to pick "doom_tiny_ILI9341_MCU.uf2" for flashing
+
+I built in the *Pico Hero's* parallel MCU LCD driver as well as PWM audio. So far no SD card support (e.g. for save states)
+
+Since the *Pico Hero* is a little short on buttons I tried to work around this limitation as follows:
+
+a) upper button: select action for middle button -> menu (ESC) / strafe (ALT) / map (TAB) / toggle run (SHIFT) / use (space)
+b) middle button: action selected by upper button
+c) lower button: fire
+
+The currently selected action of the middle button is indicated at the screen's top right corner.
+
+Hope you enjoy!
+
 # RP2040 Doom, now for I2C and SPI displays!
 
 ![](https://i.imgur.com/QxaZdQg.jpeg)
