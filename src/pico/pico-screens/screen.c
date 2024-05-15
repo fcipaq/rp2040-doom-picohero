@@ -1,5 +1,4 @@
 #include "screen.h"
-#include "hardware/gpio.h"
 
 #if LILYGO_TTGO
 #include "screens/lilygo_ttgo.h"
@@ -7,6 +6,14 @@
 
 #if ST7789_240_135
 #include "screens/st7789_240_135.h"
+#endif
+
+#if ST7789_MCU
+#include "screens/st7789_mcu_if.h"
+#endif
+
+#if ILI9341_MCU
+#include "screens/ili9341_mcu_if.h"
 #endif
 
 #if SSD1306_70_40
@@ -28,11 +35,12 @@ static void* ssd1306_70_40;
 
 
 void I_initScreen(void) {
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-
 #if ST7789_240_135
     st7789_240_135_initScreen();
+#elif ST7789_MCU
+    st7789_mcu_if_initScreen();
+#elif ILI9341_MCU
+    ili9341_mcu_if_initScreen();
 #elif LILYGO_TTGO
     lilygo_ttgo_initScreen();
 #elif SSD1306_70_40
@@ -46,9 +54,12 @@ void I_initScreen(void) {
 }
 
 void I_handleFrameStart(uint8_t frame) {
-    gpio_put(PICO_DEFAULT_LED_PIN, 0);
 #if ST7789_240_135
     st7789_240_135_handleFrameStart(frame);
+#elif ST7789_MCU
+    st7789_mcu_if_handleFrameStart(frame);
+#elif ILI9341_MCU
+    ili9341_mcu_if_handleFrameStart(frame);
 #elif LILYGO_TTGO
     lilygo_ttgo_handleFrameStart(frame);
 #elif SSD1306_70_40
@@ -64,6 +75,10 @@ void I_handleFrameStart(uint8_t frame) {
 void I_handleScanline(uint16_t *line, int scanline) {
 #if ST7789_240_135
     st7789_240_135_handleScanline(line, scanline);
+#elif ST7789_MCU
+    st7789_mcu_if_handleScanline(line, scanline);
+#elif ILI9341_MCU
+    ili9341_mcu_if_handleScanline(line, scanline);
 #elif LILYGO_TTGO
     lilygo_ttgo_handleScanline(line, scanline);
 #elif SSD1306_70_40
@@ -81,5 +96,4 @@ void I_handleFrameEnd(uint8_t frame) {
 #elif SSD1306_70_40_i2c
     ssd1306_70_40_i2c_handleFrameEnd(frame);
 #endif
-    gpio_put(PICO_DEFAULT_LED_PIN, 1);
 }

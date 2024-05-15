@@ -17,6 +17,7 @@
 //     SDL implementation of system-specific input interface.
 //
 
+#define PICOHERO_CTRL
 
 //#include "SDL.h"
 //#include "SDL_keycode.h"
@@ -31,7 +32,9 @@
 #include "i_video.h"
 #include "m_argv.h"
 #include "m_config.h"
+#ifndef PICOHERO_CTRL
 #include "hardware/uart.h"
+#endif
 #include <stdlib.h>
 #if USB_SUPPORT
 #include "pico/binary_info.h"
@@ -39,6 +42,8 @@
 #include "hardware/irq.h"
 bi_decl(bi_program_feature("USB keyboard support"));
 #endif
+#include <pico/controls.h>
+#include "hardware/gpio.h"
 
 static const int scancode_translate_table[] = SCANCODE_TO_KEYS_ARRAY;
 
@@ -127,6 +132,15 @@ enum {
     SDL_SCANCODE_RSHIFT = 229,
     SDL_SCANCODE_RALT = 230, /**< alt gr, option */
     SDL_SCANCODE_RGUI = 231, /**< windows, command (apple), meta */
+    SDL_SCANCODE_RIGHT = 79,
+    SDL_SCANCODE_LEFT = 80,
+    SDL_SCANCODE_DOWN = 81,
+    SDL_SCANCODE_UP = 82,
+    SDL_SCANCODE_RETURN = 40,
+    SDL_SCANCODE_GRAVE = 35,
+    SDL_SCANCODE_TAB = 43,
+    SDL_SCANCODE_KP_PLUS = 87,
+    SDL_SCANCODE_ESCAPE = 41,
 };
 
 // Translates the SDL key to a value of the type found in doomkeys.h
@@ -147,6 +161,15 @@ int TranslateKey(int scancode)
 
         case SDL_SCANCODE_RALT:
             return KEY_RALT;
+
+        case SDL_SCANCODE_LEFT:
+            return KEY_LEFTARROW;
+        case SDL_SCANCODE_RIGHT:
+            return KEY_RIGHTARROW;
+        case SDL_SCANCODE_UP:
+            return KEY_UPARROW;
+        case SDL_SCANCODE_DOWN:
+            return KEY_DOWNARROW;
 
         default:
             if (scancode >= 0 && scancode < arrlen(scancode_translate_table))
@@ -520,6 +543,9 @@ void I_InputInit(void) {
     tusb_init();
     irq_set_priority(USBCTRL_IRQ, 0xc0);
 #endif
+#ifdef PICOHERO_CTRL
+    ctrl_init();
+#endif
 }
 
 void I_GetEvent() {
@@ -529,8 +555,166 @@ void I_GetEvent() {
     return I_GetEventTimeout(50);
 }
 
+#ifdef PICOHERO_CTRL
+uint8_t btn_old[8];
+uint64_t btn_tmr[8];
+uint8_t key_toggle = 1;
+uint16_t var_key = SDL_SCANCODE_ESCAPE;
+extern uint8_t* current_icon;
+extern const uint8_t icon_run[];
+extern const uint8_t icon_menu[];
+extern const uint8_t icon_strafe[];
+extern const uint8_t icon_map[];
+extern const uint8_t icon_use[];
+
+uint8_t do_run = 0;
+
+#define KEYB_DELAY 200000
+#endif
+
 void I_GetEventTimeout(int key_timeout) {
-#if PICO_ON_DEVICE && !NO_USE_UART
+#ifdef PICOHERO_CTRL
+  uint16_t dpad_state = ctrl_dpad_state();
+  uint16_t btn_state = ctrl_button_state();
+
+  if (btn_state)
+    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+  else
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
+
+  if (do_run)
+    pico_key_down(SDL_SCANCODE_LSHIFT, 0, 0); // run
+  else
+    pico_key_up(SDL_SCANCODE_LSHIFT, 0, 0); // run
+
+  if (btn_state & BUTTON_1) {
+    if (time_us_64() - btn_tmr[0] > 500000) {
+      btn_tmr[0] = time_us_64();
+      pico_key_up(var_key, 0, 0);
+      key_toggle++;
+      switch (key_toggle) {
+        case 1:
+          var_key = SDL_SCANCODE_ESCAPE;  // menu
+          current_icon = (uint8_t*) icon_menu;
+          break;
+        case 2:
+          var_key = SDL_SCANCODE_LALT;   // strafe
+          current_icon = (uint8_t*) icon_strafe;
+          break;
+        case 3:
+          var_key = SDL_SCANCODE_TAB;    // map
+          current_icon = (uint8_t*) icon_map;
+          break;
+        case 4:
+          var_key = SDL_SCANCODE_LSHIFT; // run
+          current_icon = (uint8_t*) icon_run;
+          break;
+        case 5:
+          var_key = SDL_SCANCODE_SPACE;  // use
+          current_icon = (uint8_t*) icon_use;
+          key_toggle = 0;
+          break;        
+      }
+    }
+  }
+  
+  // fcipaq: todo: make this mess a clean for loop
+
+  if (btn_state & BUTTON_2) {
+    if ((btn_old[1] == 0) && (time_us_64() - btn_tmr[1]) > KEYB_DELAY) {
+      btn_old[1] = 1;
+      btn_tmr[1] = time_us_64();
+      if (var_key == SDL_SCANCODE_LSHIFT) {
+        if (do_run == 0)
+          do_run = 1;
+        else
+          do_run = 0;
+      } else {
+        if (var_key != SDL_SCANCODE_LSHIFT)
+          pico_key_down(var_key, 0, 0);
+      }
+    }
+  } else {
+    if ((btn_old[1] == 1) && (time_us_64() - btn_tmr[1]) > KEYB_DELAY) {
+      btn_old[1] = 0;
+      btn_tmr[1] = time_us_64();
+      pico_key_up(var_key, 0, 0);
+    }
+  }
+
+  if (btn_state & BUTTON_3) {
+    if ((btn_old[2] == 0) && (time_us_64() - btn_tmr[2]) > KEYB_DELAY) {
+      btn_old[2] = 1;
+      btn_tmr[2] = time_us_64();
+      pico_key_down(SDL_SCANCODE_RCTRL, 0, 0);
+      pico_key_down(SDL_SCANCODE_RETURN, 0, 0);
+    }
+  } else {
+    if ((btn_old[2] == 1) && (time_us_64() - btn_tmr[2]) > KEYB_DELAY) {
+      btn_old[2] = 0;
+      btn_tmr[2] = time_us_64();
+      pico_key_up(SDL_SCANCODE_RCTRL, 0, 0);
+      pico_key_up(SDL_SCANCODE_RETURN, 0, 0);
+    }
+  }
+    
+  if (dpad_state & DPAD_LEFT) {
+    if ((btn_old[3] == 0) && (time_us_64() - btn_tmr[3]) > KEYB_DELAY) {
+      btn_old[3] = 1;
+      btn_tmr[3] = time_us_64();
+      pico_key_down(SDL_SCANCODE_LEFT, 0, 0);
+    }
+  } else {
+    if ((btn_old[3] == 1) && (time_us_64() - btn_tmr[3]) > KEYB_DELAY) {
+      btn_old[3] = 0;
+      btn_tmr[3] = time_us_64();
+      pico_key_up(SDL_SCANCODE_LEFT, 0, 0);
+    }
+  }
+    
+  if (dpad_state & DPAD_RIGHT) {
+    if ((btn_old[4] == 0) && (time_us_64() - btn_tmr[4]) > KEYB_DELAY) {
+      btn_old[4] = 1;
+      btn_tmr[4] = time_us_64();
+      pico_key_down(SDL_SCANCODE_RIGHT, 0, 0);
+    }
+  } else {
+    if ((btn_old[4] == 1) && (time_us_64() - btn_tmr[4]) > KEYB_DELAY) {
+      btn_old[4] = 0;
+      btn_tmr[4] = time_us_64();
+      pico_key_up(SDL_SCANCODE_RIGHT, 0, 0);
+    }
+  }
+    
+  if (dpad_state & DPAD_UP) {
+    if ((btn_old[5] == 0) && (time_us_64() - btn_tmr[5]) > KEYB_DELAY) {
+      btn_old[5] = 1;
+      btn_tmr[5] = time_us_64();
+      pico_key_down(SDL_SCANCODE_UP, 0, 0);
+    }
+  } else {
+    if ((btn_old[5] == 1) && (time_us_64() - btn_tmr[5]) > KEYB_DELAY) {
+      btn_old[5] = 0;
+      btn_tmr[5] = time_us_64();
+      pico_key_up(SDL_SCANCODE_UP, 0, 0);
+    }
+  }
+    
+  if (dpad_state & DPAD_DOWN) {
+    if ((btn_old[6] == 0) && (time_us_64() - btn_tmr[6]) > KEYB_DELAY) {
+      btn_old[6] = 1;
+      btn_tmr[6] = time_us_64();
+      pico_key_down(SDL_SCANCODE_DOWN, 0, 0);
+    }
+  } else {
+    if ((btn_old[6] == 1) && (time_us_64() - btn_tmr[6]) > KEYB_DELAY) {
+      btn_old[6] = 0;
+      btn_tmr[6] = time_us_64();
+      pico_key_up(SDL_SCANCODE_DOWN, 0, 0);
+    }
+  }
+    
+#elif PICO_ON_DEVICE && !NO_USE_UART
     if (uart_is_readable(uart_default)) {
         char c = uart_getc(uart_default);
         if (c == 26 && uart_is_readable_within_us(uart_default, key_timeout)) {

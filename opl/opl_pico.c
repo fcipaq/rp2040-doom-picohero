@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include "pico/mutex.h"
-#include "pico/audio_i2s.h"
+#include "pico/audio.h"
 #include "pico/util/pheap.h"
 #include "hardware/gpio.h"
 #include "i_picosound.h"
@@ -240,6 +240,7 @@ void OPL_Pico_Mix_callback(audio_buffer_t *audio_buffer)
                 sndptr[i*2] = sndptr[i*2 + 1] = sndptr[i];
             }
 #elif USE_EMU8950_OPL
+// fcipaq: kill music here
             if (nsamples) {
                 int32_t *sndptr32 = (int32_t *) (audio_buffer->buffer->bytes + filled * 4);
                 OPL_calc_buffer_stereo(emu8950_opl, sndptr32, nsamples);
@@ -251,7 +252,7 @@ void OPL_Pico_Mix_callback(audio_buffer_t *audio_buffer)
                 OPL3_GenerateResampled(&opl_chip, sndptr);
                 sndptr += 2;
             }
-#endif
+#endif            
             filled += nsamples;
 
             // Invoke callbacks for this point in time.
@@ -268,6 +269,15 @@ void OPL_Pico_Mix_callback(audio_buffer_t *audio_buffer)
             samples[i] <<= 3;
         }
 #endif
+
+// fcipaq: PWM needs uint
+        uint16_t *samples2 = (uint16_t *)audio_buffer->buffer->bytes;
+        int16_t *samples3 = (int16_t *)audio_buffer->buffer->bytes;
+        for(uint i=0;i<audio_buffer->sample_count * 2; i++) {
+            //samples2[i] += 32768;
+            samples2[i] = (samples3[i] + 0x8000) / 2;
+        }
+        
 //#if PICO_ON_DEVICE
 //        gpio_clr_mask(1);
 //        int32_t t = (int32_t)absolute_time_diff_us(t0, get_absolute_time());

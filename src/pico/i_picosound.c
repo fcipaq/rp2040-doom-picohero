@@ -32,8 +32,9 @@
 
 #include "doomtype.h"
 #include "i_picosound.h"
-#include "pico/audio_i2s.h"
+#include "pico/audio_pwm2.h"
 #include "pico/binary_info.h"
+#include "hardware/gpio.h"
 #include "hardware/gpio.h"
 
 #define ADPCM_BLOCK_SIZE 128
@@ -350,7 +351,8 @@ static void I_Pico_UpdateSound(void)
                 int volr = channel->right/2;
                 uint offset_end = channel->decompressed_size * 65536;
                 assert(channel->offset < offset_end);
-                int16_t *samples = (int16_t *)buffer->buffer->bytes;
+		// fcipaq: PWM needs uint
+                uint16_t *samples = (uint16_t *)buffer->buffer->bytes;
 #if SOUND_LOW_PASS
                 int alpha256 = channel->alpha256;
                 int beta256 = 256 - alpha256;
@@ -364,8 +366,13 @@ static void I_Pico_UpdateSound(void)
                     //  of the world anyway, we could do this across all channels at once)
                     sample = (beta256 * sample + alpha256 * channel->decompressed[channel->offset >> 16]) / 256;
 #endif
-                    *samples++ += sample * voll;
-                    *samples++ += sample * volr;
+                    // fcipaq: kill sfx here
+                    // fcipaq: PWM needs uint
+                    *samples++ += ((sample + 32768) * 256) / 2;
+                    *samples++ += ((sample + 32768) * 256) / 2;
+//                    *samples++ = (sample + 32768) * voll;
+//                    *samples++ = (sample + 32768) * volr;
+                    
                     channel->offset += channel->step;
                     if (channel->offset >= offset_end) {
                         channel->offset -= offset_end;
@@ -383,7 +390,8 @@ static void I_Pico_UpdateSound(void)
         if (fade_state == FS_SILENT) {
             memset(buffer->buffer->bytes, 0, buffer->buffer->size);
         } else if (fade_state != FS_NONE) {
-            int16_t *samples = (int16_t *)buffer->buffer->bytes;
+            // fcipaq: PWM needs uint
+            uint16_t *samples = (uint16_t *)buffer->buffer->bytes;
             int fade_step = fade_state == FS_FADE_IN ? FADE_STEP : -FADE_STEP;
             int i;
             for(i=0;i<buffer->sample_count * 2 && fade_level;i+=2) {
@@ -423,29 +431,22 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
     // todo this will likely need adjustment - maybe with IRQs/double buffer & pull from audio we can make it quite small
     producer_pool = audio_new_producer_pool(&producer_format, 2, 1024); // todo correct size
 
-    struct audio_i2s_config config = {
-            .data_pin = PICO_AUDIO_I2S_DATA_PIN,
-            .clock_pin_base = PICO_AUDIO_I2S_CLOCK_PIN_BASE,
+    struct audio_pwm_config config = {
+            .data_pin = 0,  //  PWM pin
             .dma_channel = 6,
             .pio_sm = 0,
     };
 
     const struct audio_format *output_format;
-    output_format = audio_i2s_setup(&audio_format, &config);
+    output_format = audio_pwm_setup(&audio_format, &config);
     if (!output_format) {
         panic("PicoAudio: Unable to open audio device.\n");
     }
 
-#if INCREASE_I2S_DRIVE_STRENGTH
-    bi_decl(bi_program_feature("12mA I2S"));
-    gpio_set_drive_strength(PICO_AUDIO_I2S_DATA_PIN, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(PICO_AUDIO_I2S_CLOCK_PIN_BASE, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(PICO_AUDIO_I2S_CLOCK_PIN_BASE+1, GPIO_DRIVE_STRENGTH_12MA);
-#endif
     // we want to pass thr
-    bool ok = audio_i2s_connect_extra(producer_pool, false, 0, 0, NULL);
+    bool ok = audio_pwm_connect_extra(producer_pool, false, 0, 0, NULL);
     assert(ok);
-    audio_i2s_set_enabled(true);
+    audio_pwm_set_enabled(true);
 
     sound_initialized = true;
     return true;

@@ -10,6 +10,7 @@ add_subdirectory(adpcm-xq)
 
 # screens
 add_subdirectory(pico_st7789)
+add_subdirectory(pico_ili9341_mcu)
 add_subdirectory(pico_ssd1306)
 add_subdirectory(pico_ssd1306_i2c)
 add_subdirectory(hagl_hal)
@@ -505,6 +506,7 @@ function(add_doom_tiny SUFFIX SCREEN)
 
         # LILYGO_TTGO=1
         # ST7789_240_135=1
+        # ILI9341_MCU=1
         # SSD1306_70_40=1
         # SSD1306_70_40_i2c=1
         ${SCREEN}=1
@@ -591,6 +593,7 @@ function(add_doom_tiny SUFFIX SCREEN)
         # target_link_libraries(doom_tiny${SUFFIX} PRIVATE hardware_spi)
         # TODO use defs or targets for these?
         target_link_libraries(doom_tiny${SUFFIX} PRIVATE pico_st7789 hardware_spi)
+        target_link_libraries(doom_tiny${SUFFIX} PRIVATE pico_ili9341_mcu)
         target_link_libraries(doom_tiny${SUFFIX} PRIVATE pico_ssd1306)
         target_link_libraries(doom_tiny${SUFFIX} PRIVATE pico_ssd1306_i2c hardware_i2c)
         target_link_libraries(doom_tiny${SUFFIX} PRIVATE hagl_hal hardware_spi)
@@ -607,19 +610,16 @@ function(add_doom_tiny SUFFIX SCREEN)
     set(STAMP_HACK 0)
     if (PICO_HACK)
         target_compile_definitions(doom_tiny${SUFFIX} PRIVATE
-                PICO_AUDIO_I2S_DATA_PIN=20
-                PICO_AUDIO_I2S_CLOCK_PIN_BASE=21
+                PICO_AUDIO_PWM_DATA_PIN=0
                 NO_USE_UART=1
                 )
-        pico_enable_stdio_uart(doom_tiny${SUFFIX} 0)
+#        pico_enable_stdio_uart(doom_tiny${SUFFIX} 0)
     elseif(STAMP_HACK)
         target_compile_definitions(doom_tiny${SUFFIX} PRIVATE
-                PICO_AUDIO_I2S_DATA_PIN=22
-                PICO_AUDIO_I2S_CLOCK_PIN_BASE=23
+                PICO_AUDIO_PWM_DATA_PIN=0
                 NO_USE_UART=1
-                INCREASE_I2S_DRIVE_STRENGTH=1
         )
-        pico_enable_stdio_uart(doom_tiny${SUFFIX} 0)
+#        pico_enable_stdio_uart(doom_tiny${SUFFIX} 0)
     endif()
 endfunction()
 
@@ -660,12 +660,12 @@ endif()
 
 function(add_doom_tiny_screen SCREEN)
     if (PICO_SDK)
-        # add_doom_tiny(_${SCREEN} ${SCREEN})
+        add_doom_tiny(_${SCREEN} ${SCREEN})
 
-        # target_compile_definitions(doom_tiny_${SCREEN} PRIVATE
-        #         TINY_WAD_ADDR=0x10040000
-        # )
-        # target_link_libraries(doom_tiny_${SCREEN} PRIVATE tiny_settings)
+        target_compile_definitions(doom_tiny_${SCREEN} PRIVATE
+                TINY_WAD_ADDR=0x10040000
+        )
+        target_link_libraries(doom_tiny_${SCREEN} PRIVATE tiny_settings)
 
         # disabled because I don't need it, probably still works...
         # add_doom_tiny(_nost_${SCREEN} ${SCREEN})
@@ -713,6 +713,11 @@ target_compile_definitions(doom_tiny_usb_LILYGO_TTGO PRIVATE
 
 add_doom_tiny_screen("ST7789_240_135")
 target_compile_definitions(doom_tiny_usb_ST7789_240_135 PRIVATE
+    DOWNSAMPLING_FACTOR_OUT_OF_100=148
+)
+
+add_doom_tiny_screen("ILI9341_MCU")
+target_compile_definitions(doom_tiny_usb_ILI9341_MCU PRIVATE
     DOWNSAMPLING_FACTOR_OUT_OF_100=148
 )
 
