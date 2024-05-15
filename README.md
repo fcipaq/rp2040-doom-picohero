@@ -1,6 +1,6 @@
 # RP2040 Doom - now for the *Pico Held*
 
-This is the adaption of *Graham Sanderson's* great Doom port for the RP2040 which was made working on LCDs by *rsheldiii* and now runs on the *Pico Hero*. Thanks for the amazing work.
+This is the adaption of *Graham Sanderson's* great Doom port for the RP2040 which was made working on LCDs by *rsheldiii* and now runs on the *Pico Hero*. Thanks to *Graham Sanderson's* for the amazing port and *rsheldiii* for making it work on LCDs.
 
 ![Doom on the Pico Held](images/img1.jpg)
 
