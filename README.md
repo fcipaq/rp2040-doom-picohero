@@ -11,7 +11,9 @@ I built in the *Pico Hero's* parallel MCU LCD driver as well as PWM audio. So fa
 Since the *Pico Hero* is a little short on buttons I tried to work around this limitation as follows:
 
 a) upper button: select action for middle button -> menu (ESC) / strafe (ALT) / map (TAB) / toggle run (SHIFT) / use (space)
+
 b) middle button: action selected by upper button
+
 c) lower button: fire
 
 The currently selected action of the middle button is indicated at the screen's top right corner.
