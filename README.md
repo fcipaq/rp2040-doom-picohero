@@ -20,6 +20,8 @@ The currently selected action of the middle button is indicated at the screen's 
 
 Hope you enjoy!
 
+## Original readme:
+
 # RP2040 Doom, now for I2C and SPI displays!
 
 ![](https://i.imgur.com/QxaZdQg.jpeg)
